@@ -1,18 +1,21 @@
 import streamlit as st
 import pandas as pd
 import random
-    from reportlab.lib.pagesizes import letter
-    from reportlab.pdfgen import canvas
+from fpdf import FPDF
+from io import BytesIO
+from datetime import datetime
 
+# -------------------------
+# CONFIGURACIÓN PÁGINA
+# -------------------------
 st.set_page_config(
     page_title="Sorteo de Plazas Carlos Marx 1-3",
     layout="centered"
 )
 
 # -------------------------
-# ESTILO
+# ESTILO MINIMALISTA
 # -------------------------
-
 st.markdown("""
 <style>
 .block-container {padding-top: 2rem; padding-bottom: 2rem; max-width: 1000px;}
@@ -25,18 +28,16 @@ st.markdown("""
 # -------------------------
 # HEADER
 # -------------------------
-
 st.markdown("""
 <div style="padding-bottom:1.5rem;border-bottom:1px solid #e5e7eb;margin-bottom:2rem;">
-<h1 style="margin:0;">Sorteo de Plazas Carlos Marx 1-3</h1>
-<p style="margin:0;color:#6b7280;">Alba Fons · 2026</p>
+    <h1 style="margin:0;">Sorteo de Plazas Carlos Marx 1-3</h1>
+    <p style="margin:0;color:#6b7280;">Alba Fons. 2026</p>
 </div>
 """, unsafe_allow_html=True)
 
 # -------------------------
 # ESTADO
 # -------------------------
-
 if "solicitantes" not in st.session_state:
     st.session_state.solicitantes = []
 
@@ -47,50 +48,36 @@ if "plazas_dobles_fisicas" not in st.session_state:
     st.session_state.plazas_dobles_fisicas = []
 
 # -------------------------
-# RANGOS
+# RANGOS DE PLAZAS
 # -------------------------
-
 RANGOS = {
-    1: list(range(1, 27)) + [80, 81] + [94],
+    1: list(range(1, 27)) + [80, 81, 94],
     2: list(range(27, 43)) + [79],
-    3: [n for n in range(43, 53) if n != 43],
+    3: [n for n in range(44, 53)],  # 43 excluida ya en rango 2
     4: list(range(53, 79)),
     5: list(range(82, 93)),
 }
 
-# NOMBRES PARA PDF
-NOMBRES_RANGO = {
+RANGO_NOMBRES = {
     1: "R",
     2: "B1",
     3: "B2",
     4: "S-2G",
-    5: "S-2P"
+    5: "S-2P",
 }
 
 # -------------------------
 # FUNCIONES
 # -------------------------
-
 def generar_plazas():
     plazas = {}
-
     for rango, numeros in RANGOS.items():
         for n in numeros:
-
             tipo = "doble_fisica" if n in st.session_state.plazas_dobles_fisicas else "sencilla"
-
-            plazas[n] = {
-                "numero": n,
-                "rango": rango,
-                "tipo": tipo,
-                "ocupada": False
-            }
-
+            plazas[n] = {"numero": n, "rango": rango, "tipo": tipo, "ocupada": False}
     return plazas
 
-
 def asignar_plazas():
-
     solicitantes = st.session_state.solicitantes.copy()
     random.shuffle(solicitantes)
 
@@ -98,328 +85,189 @@ def asignar_plazas():
     resultados = []
 
     for s in solicitantes:
-
         nombre = s["nombre"]
         tipo = s["tipo"]
         asignado = False
 
         if tipo == "sencilla":
-
             for plaza in plazas.values():
                 if not plaza["ocupada"]:
                     plaza["ocupada"] = True
-
-                    resultados.append({
-                        "nombre": nombre,
-                        "plazas": [plaza["numero"]],
-                        "rango": plaza["rango"]
-                    })
-
+                    resultados.append({"nombre": nombre, "plazas":[plaza["numero"]], "rango": plaza["rango"]})
                     asignado = True
                     break
 
         elif tipo == "doble":
-
-            # DOBLE FÍSICA
+            # 1️⃣ Doble física
             for plaza in plazas.values():
-
                 if plaza["tipo"] == "doble_fisica" and not plaza["ocupada"]:
-
                     plaza["ocupada"] = True
-
-                    resultados.append({
-                        "nombre": nombre,
-                        "plazas": [plaza["numero"], plaza["numero"]],
-                        "rango": plaza["rango"]
-                    })
-
+                    resultados.append({"nombre": nombre, "plazas":[plaza["numero"], plaza["numero"]], "rango": plaza["rango"]})
                     asignado = True
                     break
 
-            # DOS CONSECUTIVAS
+            # 2️⃣ Dos consecutivas
             if not asignado:
-
                 for rango, numeros in RANGOS.items():
-
-                    for i in range(len(numeros) - 1):
-
+                    for i in range(len(numeros)-1):
                         p1 = plazas[numeros[i]]
-                        p2 = plazas[numeros[i + 1]]
-
+                        p2 = plazas[numeros[i+1]]
                         if not p1["ocupada"] and not p2["ocupada"]:
-
                             p1["ocupada"] = True
                             p2["ocupada"] = True
-
-                            resultados.append({
-                                "nombre": nombre,
-                                "plazas": [p1["numero"], p2["numero"]],
-                                "rango": rango
-                            })
-
+                            resultados.append({"nombre": nombre, "plazas":[p1["numero"], p2["numero"]], "rango": rango})
                             asignado = True
                             break
-
-                    if asignado:
-                        break
+                    if asignado: break
 
         if not asignado:
-
-            resultados.append({
-                "nombre": nombre,
-                "plazas": ["LISTA DE ESPERA"],
-                "rango": None
-            })
+            resultados.append({"nombre": nombre, "plazas":["LISTA DE ESPERA"], "rango": None})
 
     return resultados
 
-
 def exportar_pdf(resultados):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Resultados del Sorteo", ln=True, align="C")
+    pdf.set_font("Arial", "", 10)
+    pdf.cell(0, 8, datetime.now().strftime("%d/%m/%Y %H:%M"), ln=True, align="C")
+    pdf.ln(10)
+
+    pdf.set_font("Arial", "", 11)
+    for r in resultados:
+        plazas_text = ", ".join(str(p) for p in r["plazas"])
+        rango_text = RANGO_NOMBRES.get(r["rango"], "-") if r["rango"] else "-"
+        line = f"{r['nombre']} | Plazas: {plazas_text} | Rango: {rango_text}"
+        pdf.multi_cell(0, 8, line)
 
     buffer = BytesIO()
-
-    c = canvas.Canvas(buffer, pagesize=letter)
-
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(200, 770, "Resultados del Sorteo")
-
-    c.setFont("Helvetica", 10)
-    c.drawString(220, 755, datetime.now().strftime("%d/%m/%Y %H:%M"))
-
-    # ordenar por rango
-    ordenados = sorted(resultados, key=lambda x: (x["rango"] is None, x["rango"]))
-
-    y = 730
-
-    lista_espera = []
-
-    for r in ordenados:
-
-        if r["rango"] is None:
-            lista_espera.append(r)
-            continue
-
-        plazas_text = ", ".join(str(p) for p in r["plazas"])
-
-        rango_text = NOMBRES_RANGO.get(r["rango"], r["rango"])
-
-        line = f"{r['nombre']}  →  {plazas_text} ({rango_text})"
-
-        c.drawString(60, y, line)
-
-        y -= 18
-
-        if y < 60:
-            c.showPage()
-            y = 750
-
-    if lista_espera:
-
-        y -= 10
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(60, y, "Lista de espera")
-        y -= 20
-        c.setFont("Helvetica", 11)
-
-        for r in lista_espera:
-
-            c.drawString(60, y, r["nombre"])
-
-            y -= 18
-
-            if y < 60:
-                c.showPage()
-                y = 750
-
-    c.save()
-
+    pdf.output(buffer)
     buffer.seek(0)
-
     return buffer
-
 
 # -------------------------
 # TABS
 # -------------------------
-
-tab1, tab2, tab3, tab4 = st.tabs(
-    ["Solicitantes", "Configuración", "Sorteo", "Exportar"]
-)
+tab1, tab2, tab3, tab4 = st.tabs(["Solicitantes", "Configuración", "Sorteo", "Exportar"])
 
 # -------------------------
-# SOLICITANTES
+# TAB 1 - SOLICITANTES
 # -------------------------
-
 with tab1:
-
-    st.subheader("Añadir solicitante")
-
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("Añadir solicitante manual")
     col1, col2 = st.columns(2)
-
     with col1:
         nombre = st.text_input("Nombre")
-
     with col2:
-        tipo = st.selectbox("Tipo de plaza", ["sencilla", "doble"])
-
+        tipo = st.selectbox("Tipo de plaza", ["sencilla","doble"])
     if st.button("Añadir"):
-
         if nombre.strip():
-
-            nombres_existentes = {s["nombre"].lower() for s in st.session_state.solicitantes}
-
-            if nombre.strip().lower() in nombres_existentes:
-
+            nombres_existentes = {s["nombre"] for s in st.session_state.solicitantes}
+            if nombre.strip() in nombres_existentes:
                 st.warning("Este participante ya está registrado")
-
             else:
-
-                st.session_state.solicitantes.append({
-                    "nombre": nombre.strip(),
-                    "tipo": tipo
-                })
-
-                st.success("Solicitante añadido")
-
+                st.session_state.solicitantes.append({"nombre": nombre.strip(), "tipo": tipo})
+                st.success("Solicitante añadido correctamente")
         else:
             st.warning("Introduce un nombre válido")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    st.subheader("Importar Excel")
-
-    archivo = st.file_uploader("Subir archivo", type=["xlsx"])
-
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("Importar desde Excel")
+    archivo = st.file_uploader("Subir archivo (.xlsx)", type=["xlsx"])
     if archivo is not None:
+        try:
+            df = pd.read_excel(archivo)
+            df.columns = df.columns.str.strip().str.lower()
+            if not {"nombre","tipo"}.issubset(df.columns):
+                st.error("El archivo debe contener 'nombre' y 'tipo'")
+            else:
+                df = df[["nombre","tipo"]]
+                df["nombre"] = df["nombre"].astype(str).str.strip()
+                df["tipo"] = df["tipo"].astype(str).str.strip().str.lower()
+                if not df["tipo"].isin(["sencilla","doble"]).all():
+                    st.error("La columna 'tipo' solo puede contener 'sencilla' o 'doble'")
+                else:
+                    registros = df.to_dict(orient="records")
+                    nombres_existentes = {s["nombre"] for s in st.session_state.solicitantes}
+                    nuevos = [r for r in registros if r["nombre"] not in nombres_existentes]
+                    st.session_state.solicitantes.extend(nuevos)
+                    st.success(f"{len(nuevos)} participantes añadidos, {len(registros)-len(nuevos)} duplicados ignorados.")
+        except Exception as e:
+            st.error(f"Error al procesar el archivo: {e}")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        df = pd.read_excel(archivo)
-
-        df.columns = df.columns.str.strip().str.lower()
-
-        if not {"nombre", "tipo"}.issubset(df.columns):
-
-            st.error("El archivo debe contener columnas 'nombre' y 'tipo'")
-
-        else:
-
-            df = df[["nombre", "tipo"]]
-
-            df["nombre"] = df["nombre"].astype(str).str.strip()
-            df["tipo"] = df["tipo"].astype(str).str.strip().str.lower()
-
-            nombres_existentes = {s["nombre"].lower() for s in st.session_state.solicitantes}
-
-            nuevos = []
-
-            for _, row in df.iterrows():
-
-                if row["nombre"].lower() not in nombres_existentes:
-
-                    nuevos.append({
-                        "nombre": row["nombre"],
-                        "tipo": row["tipo"]
-                    })
-
-                    nombres_existentes.add(row["nombre"].lower())
-
-            st.session_state.solicitantes.extend(nuevos)
-
-            st.success(f"{len(nuevos)} participantes añadidos")
-
-    st.subheader("Listado")
-
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("Listado actual")
     if st.session_state.solicitantes:
-
-        df = pd.DataFrame(st.session_state.solicitantes)
-
-        st.dataframe(df)
-
-        st.caption(f"Total participantes: {len(df)}")
+        df_actual = pd.DataFrame(st.session_state.solicitantes)
+        st.dataframe(df_actual, use_container_width=True)
+        st.caption(f"Total participantes: {len(df_actual)}")
+    else:
+        st.caption("No hay participantes registrados")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # -------------------------
-# CONFIGURACIÓN
+# TAB 2 - CONFIGURACIÓN PLAZAS DOBLES
 # -------------------------
-
 with tab2:
-
-    st.subheader("Plazas dobles físicas")
-
-    nuevas = []
-
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("Configurar plazas dobles físicas")
+    nuevas_dobles = []
     for rango, numeros in RANGOS.items():
-
-        st.markdown(f"**Rango {rango}**")
-
+        st.markdown(f"**Rango {RANGO_NOMBRES[rango]}**")
         cols = st.columns(6)
-
         for i, numero in enumerate(numeros):
-
             col = cols[i % 6]
-
             with col:
-
-                marcado = st.checkbox(
-                    str(numero),
+                marcado = st.checkbox(str(numero),
                     value=(numero in st.session_state.plazas_dobles_fisicas),
-                    key=f"doble_{numero}"
-                )
-
-                if marcado:
-                    nuevas.append(numero)
-
-    st.session_state.plazas_dobles_fisicas = nuevas
+                    key=f"doble_{numero}")
+                if marcado: nuevas_dobles.append(numero)
+    st.session_state.plazas_dobles_fisicas = nuevas_dobles
+    st.caption(f"Total plazas dobles físicas: {len(nuevas_dobles)}")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # -------------------------
-# SORTEO
+# TAB 3 - SORTEO
 # -------------------------
-
 with tab3:
-
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("Realizar sorteo")
     if st.button("Ejecutar sorteo"):
-
         if not st.session_state.solicitantes:
-
-            st.warning("No hay solicitantes")
-
+            st.warning("No hay solicitantes registrados")
         else:
-
-            with st.spinner("Realizando sorteo..."):
-
+            with st.spinner("Procesando asignación..."):
                 st.session_state.resultados = asignar_plazas()
-
-            st.success("Sorteo realizado")
-
+            st.success("Sorteo realizado correctamente")
     if st.session_state.resultados:
-
-        df = pd.DataFrame(st.session_state.resultados)
-
-        df["plazas"] = df["plazas"].apply(lambda x: ", ".join(map(str, x)))
-
-        st.dataframe(df)
+        df_resultados = pd.DataFrame(st.session_state.resultados)
+        df_resultados["plazas"] = df_resultados["plazas"].apply(lambda x: ", ".join(map(str,x)))
+        df_resultados["rango"] = df_resultados["rango"].apply(lambda x: RANGO_NOMBRES.get(x, "-") if x else "-")
+        st.dataframe(df_resultados, use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # -------------------------
-# EXPORTAR
+# TAB 4 - EXPORTAR
 # -------------------------
-
 with tab4:
-
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("Exportar resultados")
     if st.session_state.resultados:
-
-        pdf = exportar_pdf(st.session_state.resultados)
-
-        st.download_button(
-            "Descargar PDF",
-            pdf,
-            "resultado_sorteo.pdf",
-            "application/pdf"
-        )
+        pdf_bytes = exportar_pdf(st.session_state.resultados)
+        st.download_button("Descargar PDF", data=pdf_bytes, file_name="resultado_sorteo.pdf", mime="application/pdf")
+    else:
+        st.caption("No hay resultados disponibles")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # -------------------------
-# REINICIAR
+# REINICIO
 # -------------------------
-
 st.markdown("---")
-
 if st.button("Reiniciar aplicación"):
-
     st.session_state.clear()
-
     st.rerun()
