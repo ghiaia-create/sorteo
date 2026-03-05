@@ -53,9 +53,9 @@ if "plazas_dobles_fisicas" not in st.session_state:
 RANGOS = {
     1: list(range(1, 27)) + [80, 81, 94],
     2: list(range(27, 43)) + [79],
-    3: [n for n in range(44, 53)],  # 43 excluida ya en rango 2
+    3: list(range(44, 53)),
     4: list(range(53, 79)),
-    5: list(range(82, 94)),
+    5: list(range(82, 94)),  # ahora incluye la plaza 93
 }
 
 RANGO_NOMBRES = {
@@ -133,6 +133,8 @@ def exportar_pdf(resultados):
     pdf.cell(0, 10, "Resultados del Sorteo", ln=True, align="C")
     pdf.set_font("Arial", "", 10)
     pdf.cell(0, 8, datetime.now().strftime("%d/%m/%Y %H:%M"), ln=True, align="C")
+    pdf.ln(5)
+    pdf.cell(0, 8, f"Semilla usada: {st.session_state.get('seeding', 'Aleatorio')}", ln=True, align="C")
     pdf.ln(10)
 
     pdf.set_font("Arial", "", 11)
@@ -237,13 +239,23 @@ with tab2:
 with tab3:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("Realizar sorteo")
+    seed_input = st.number_input("Semilla (opcional, deja 0 para aleatorio)", min_value=0, step=1, value=0)
+
     if st.button("Ejecutar sorteo"):
         if not st.session_state.solicitantes:
             st.warning("No hay solicitantes registrados")
         else:
+            if seed_input > 0:
+                random.seed(seed_input)
+                st.session_state.seeding = seed_input
+            else:
+                random.seed()
+                st.session_state.seeding = "Aleatorio"
+
             with st.spinner("Procesando asignación..."):
                 st.session_state.resultados = asignar_plazas()
             st.success("Sorteo realizado correctamente")
+
     if st.session_state.resultados:
         df_resultados = pd.DataFrame(st.session_state.resultados)
         df_resultados["plazas"] = df_resultados["plazas"].apply(lambda x: ", ".join(map(str,x)))
