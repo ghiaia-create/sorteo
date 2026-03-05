@@ -55,7 +55,7 @@ RANGOS = {
     2: list(range(27, 43)) + [79],
     3: [n for n in range(44, 53)],  # 43 excluida ya en rango 2
     4: list(range(53, 79)),
-    5: list(range(82, 93)),
+    5: list(range(82, 94)),
 }
 
 RANGO_NOMBRES = {
