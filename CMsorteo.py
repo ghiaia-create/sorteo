@@ -126,29 +126,71 @@ def asignar_plazas():
     return resultados
 
 def exportar_pdf(resultados):
+
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
+
+    # -------------------
+    # TÍTULO
+    # -------------------
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, "Resultados del Sorteo", ln=True, align="C")
-    pdf.set_font("Arial", "", 10)
-    pdf.cell(0, 8, datetime.now().strftime("%d/%m/%Y %H:%M"), ln=True, align="C")
-    pdf.ln(5)
-    pdf.cell(0, 8, f"Semilla usada: {st.session_state.get('seeding', 'Aleatorio')}", ln=True, align="C")
-    pdf.ln(10)
+    pdf.cell(0, 10, "Resultados del Sorteo de Plazas", ln=True, align="C")
 
     pdf.set_font("Arial", "", 11)
+    pdf.cell(0, 8, "Carlos Marx 1-3", ln=True, align="C")
+
+    fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
+    semilla = st.session_state.get("seeding", "Aleatorio")
+
+    pdf.cell(0, 8, f"Fecha: {fecha}", ln=True, align="C")
+    pdf.cell(0, 8, f"Semilla del sorteo: {semilla}", ln=True, align="C")
+
+    pdf.ln(10)
+
+    # -------------------
+    # CABECERA TABLA
+    # -------------------
+    pdf.set_font("Arial", "B", 11)
+
+    pdf.cell(80, 8, "Nombre", border=1)
+    pdf.cell(60, 8, "Plazas asignadas", border=1)
+    pdf.cell(30, 8, "Rango", border=1, ln=True)
+
+    pdf.set_font("Arial", "", 11)
+
+    # -------------------
+    # FILAS
+    # -------------------
     for r in resultados:
+
+        nombre = r["nombre"]
+
         plazas_text = ", ".join(str(p) for p in r["plazas"])
-        rango_text = RANGO_NOMBRES.get(r["rango"], "-") if r["rango"] else "-"
-        line = f"{r['nombre']} | Plazas: {plazas_text} | Rango: {rango_text}"
-        pdf.multi_cell(0, 8, line)
 
-    buffer = BytesIO()
-    pdf.output(buffer)
-    buffer.seek(0)
-    return buffer
+        if r["rango"]:
+            rango_text = RANGO_NOMBRES.get(r["rango"], "-")
+        else:
+            rango_text = "Lista espera"
 
+        pdf.cell(80, 8, nombre, border=1)
+        pdf.cell(60, 8, plazas_text, border=1)
+        pdf.cell(30, 8, rango_text, border=1, ln=True)
+
+    pdf.ln(10)
+
+    # -------------------
+    # PIE
+    # -------------------
+    pdf.set_font("Arial", "I", 9)
+    pdf.cell(0, 8, "Documento generado automaticamente por la aplicacion de sorteo", ln=True, align="C")
+
+    # -------------------
+    # EXPORTAR
+    # -------------------
+    pdf_bytes = pdf.output(dest="S").encode("latin-1")
+
+    return pdf_bytes
 # -------------------------
 # TABS
 # -------------------------
