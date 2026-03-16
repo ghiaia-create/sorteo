@@ -51,11 +51,11 @@ if "plazas_dobles_fisicas" not in st.session_state:
 # RANGOS DE PLAZAS
 # -------------------------
 RANGOS = {
-    1: list(range(1, 27)) + [80, 81, 94],
+    1: list(range(1, 27)) + [80, 81, 93],
     2: list(range(27, 43)) + [79],
     3: list(range(44, 53)),
     4: list(range(53, 79)),
-    5: list(range(82, 94)),  # ahora incluye la plaza 93
+    5: list(range(82, 93)),  
 }
 
 RANGO_NOMBRES = {
