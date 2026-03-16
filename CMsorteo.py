@@ -135,8 +135,6 @@ def asignar_plazas():
 
 def exportar_pdf(resultados):
 
-def exportar_pdf(resultados):
-
     pdf = PDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
