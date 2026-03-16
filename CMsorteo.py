@@ -283,20 +283,23 @@ with tab3:
     st.subheader("Realizar sorteo")
     seed_input = st.number_input("Semilla (opcional, deja 0 para aleatorio)", min_value=0, step=1, value=0)
 
-    if st.button("Ejecutar sorteo"):
-        if not st.session_state.solicitantes:
-            st.warning("No hay solicitantes registrados")
-        else:
-            if seed_input > 0:
-                random.seed(seed_input)
-                st.session_state.seeding = seed_input
-            else:
-                random.seed()
-                st.session_state.seeding = "Aleatorio"
+   if st.button("Ejecutar sorteo"):
+    if not st.session_state.solicitantes:
+        st.warning("No hay solicitantes registrados")
+    else:
 
-            with st.spinner("Procesando asignación..."):
-                st.session_state.resultados = asignar_plazas()
-            st.success("Sorteo realizado correctamente")
+        if seed_input > 0:
+            seed_value = seed_input
+        else:
+            seed_value = random.randint(1, 10_000_000)
+
+        random.seed(seed_value)
+        st.session_state.seeding = seed_value
+
+        with st.spinner("Procesando asignación..."):
+            st.session_state.resultados = asignar_plazas()
+
+        st.success("Sorteo realizado correctamente")
 
     if st.session_state.resultados:
         df_resultados = pd.DataFrame(st.session_state.resultados)
