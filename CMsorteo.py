@@ -5,7 +5,8 @@ from fpdf import FPDF
 from io import BytesIO
 from datetime import datetime
 class PDF(FPDF):
-def header(self):
+
+    def header(self):
         # Logo arriba a la derecha
         self.image("logo.png", x=170, y=8, w=30)
 
