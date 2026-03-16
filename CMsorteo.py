@@ -281,32 +281,42 @@ with tab2:
 with tab3:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("Realizar sorteo")
-    seed_input = st.number_input("Semilla (opcional, deja 0 para aleatorio)", min_value=0, step=1, value=0)
 
-   if st.button("Ejecutar sorteo"):
-    if not st.session_state.solicitantes:
-        st.warning("No hay solicitantes registrados")
-    else:
+    seed_input = st.number_input(
+        "Semilla (opcional, deja 0 para aleatorio)",
+        min_value=0,
+        step=1,
+        value=0
+    )
 
-        if seed_input > 0:
-            seed_value = seed_input
+    if st.button("Ejecutar sorteo"):
+        if not st.session_state.solicitantes:
+            st.warning("No hay solicitantes registrados")
         else:
-            seed_value = random.randint(1, 10_000_000)
 
-        random.seed(seed_value)
-        st.session_state.seeding = seed_value
+            if seed_input > 0:
+                seed_value = seed_input
+            else:
+                seed_value = random.randint(1, 10_000_000)
 
-        with st.spinner("Procesando asignación..."):
-            st.session_state.resultados = asignar_plazas()
+            random.seed(seed_value)
+            st.session_state.seeding = seed_value
 
-        st.success("Sorteo realizado correctamente")
+            with st.spinner("Procesando asignación..."):
+                st.session_state.resultados = asignar_plazas()
 
- if st.session_state.resultados:
-    df_resultados = pd.DataFrame(st.session_state.resultados)
-    df_resultados["plazas"] = df_resultados["plazas"].apply(lambda x: ", ".join(map(str,x)))
-    df_resultados["rango"] = df_resultados["rango"].apply(lambda x: RANGO_NOMBRES.get(x, "-") if x else "-")
-    st.dataframe(df_resultados, use_container_width=True)
- st.info(f"Semilla utilizada en el sorteo: {st.session_state.seeding}")
+            st.success("Sorteo realizado correctamente")
+
+    if st.session_state.resultados:
+        df_resultados = pd.DataFrame(st.session_state.resultados)
+        df_resultados["plazas"] = df_resultados["plazas"].apply(lambda x: ", ".join(map(str,x)))
+        df_resultados["rango"] = df_resultados["rango"].apply(lambda x: RANGO_NOMBRES.get(x, "-") if x else "-")
+
+        st.dataframe(df_resultados, use_container_width=True)
+
+        st.info(f"Semilla utilizada en el sorteo: {st.session_state.seeding}")
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # -------------------------
 # TAB 4 - EXPORTAR
