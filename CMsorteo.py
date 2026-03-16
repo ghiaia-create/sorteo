@@ -301,12 +301,13 @@ with tab3:
 
         st.success("Sorteo realizado correctamente")
 
-    if st.session_state.resultados:
-        df_resultados = pd.DataFrame(st.session_state.resultados)
-        df_resultados["plazas"] = df_resultados["plazas"].apply(lambda x: ", ".join(map(str,x)))
-        df_resultados["rango"] = df_resultados["rango"].apply(lambda x: RANGO_NOMBRES.get(x, "-") if x else "-")
-        st.dataframe(df_resultados, use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+ if st.session_state.resultados:
+    df_resultados = pd.DataFrame(st.session_state.resultados)
+    df_resultados["plazas"] = df_resultados["plazas"].apply(lambda x: ", ".join(map(str,x)))
+    df_resultados["rango"] = df_resultados["rango"].apply(lambda x: RANGO_NOMBRES.get(x, "-") if x else "-")
+    st.dataframe(df_resultados, use_container_width=True)
+
+    st.info(f"Semilla utilizada en el sorteo: {st.session_state.seeding}")
 
 # -------------------------
 # TAB 4 - EXPORTAR
