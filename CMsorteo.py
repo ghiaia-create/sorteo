@@ -135,7 +135,9 @@ def asignar_plazas():
 
 def exportar_pdf(resultados):
 
-  pdf = PDF()
+def exportar_pdf(resultados):
+
+    pdf = PDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
 
@@ -155,7 +157,6 @@ def exportar_pdf(resultados):
     pdf.cell(0, 8, f"Semilla del sorteo: {semilla}", ln=True, align="C")
 
     pdf.ln(10)
-
     # -------------------
     # CABECERA TABLA
     # -------------------
